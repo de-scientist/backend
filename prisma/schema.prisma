@@ -1,0 +1,204 @@
+// MUTCU Backend Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  //url       = env("DATABASE_URL")
+  //directUrl = env("DIRECT_URL")
+}
+        
+
+// User model for authentication and admin access
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  name          String?
+  role          UserRole @default(USER)
+  adminRole     String?  // Additional admin role field
+  privileges    String?  // JSON string of admin privileges
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+}
+
+// Events model
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  date        DateTime
+  time        String?
+  location    String?
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("events")
+}
+
+// Ministries model
+model Ministry {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  imageUrl    String?
+  slug        String   @unique
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ministries")
+}
+
+// Prayer requests model
+model PrayerRequest {
+  id        String   @id @default(uuid())
+  name      String?
+  request   String
+  isPublic  Boolean  @default(false)
+  status    PrayerStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("prayer_requests")
+}
+
+enum PrayerStatus {
+  PENDING
+  PRAYED_FOR
+  ANSWERED
+}
+
+// Newsletter subscriptions
+model NewsletterSubscription {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("newsletter_subscriptions")
+}
+
+// Contact form submissions
+model ContactSubmission {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  status    ContactStatus @default(NEW)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contact_submissions")
+}
+
+enum ContactStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  ARCHIVED
+}
+
+// Executive Committee Members
+model ExecutiveMember {
+  id          String   @id @default(uuid())
+  name        String
+  role        String
+  imageUrl    String?
+  bio         String?
+  email       String?
+  phone       String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, role])
+  @@map("executive_members")
+}
+
+// Gallery/Media items
+model Media {
+  id          String   @id @default(uuid())
+  title       String?
+  description String?
+  imageUrl    String
+  category    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("media")
+}
+
+// Blog posts model
+model Blog {
+  id            String   @id @default(uuid())
+  title         String
+  slug          String   @unique
+  excerpt       String?
+  content       String
+  featuredImage String?
+  author        String?
+  status        String   @default("draft") // draft | published
+  tags          String?  // comma-separated tags
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("blogs")
+}
+
+// Members registration model
+model Member {
+  id          String   @id @default(uuid())
+  name        String
+  email       String
+  yearOfStudy String
+  course      String
+  ministry1   String?
+  ministry2   String?
+  message     String?
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("members")
+}
+
+// Resources model
+model Resource {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  url         String?  // file or external link
+  type        String?  // PDF | AUDIO | VIDEO | LINK
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("resources")
+}
