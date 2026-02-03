@@ -4,58 +4,93 @@ import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import env from "./config/env.js";
-import errorHandler from "./middlewares/errorHandler.ts";
+import errorHandler from "./middlewares/errorHandler.js";
 
-// Import routes
-import authRoutes from "./routes/authRoutes.ts";
-import eventRoutes from "./routes/eventRoutes.ts";
-import ministryRoutes from "./routes/ministryRoutes.ts";
-import prayerRoutes from "./routes/prayerRoutes.ts";
-import contactRoutes from "./routes/contactRoutes.ts";
-import newsletterRoutes from "./routes/newsletterRoutes.ts";
-import adminRoutes from "./routes/adminRoutes.ts";
-import usersRoutes from "./routes/usersRoutes.ts";
-import resourcesRoutes from "./routes/resourcesRoutes.ts";
-import memberRoutes from "./routes/memberRoutes.ts";
-import mediaRoutes from "./routes/mediaRoutes.ts";
-import blogRoutes from "./routes/blogRoutes.ts";
+// Routes
+import authRoutes from "./routes/authRoutes.js";
+import eventRoutes from "./routes/eventRoutes.js";
+import ministryRoutes from "./routes/ministryRoutes.js";
+import prayerRoutes from "./routes/prayerRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import newsletterRoutes from "./routes/newsletterRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import usersRoutes from "./routes/usersRoutes.js";
+import resourcesRoutes from "./routes/resourcesRoutes.js";
+import memberRoutes from "./routes/memberRoutes.js";
+import mediaRoutes from "./routes/mediaRoutes.js";
+import blogRoutes from "./routes/blogRoutes.js";
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
+/* ───────────────────────────────
+   Security & Trust
+─────────────────────────────── */
 
-// CORS configuration
+// Helmet (Supabase-friendly CSP)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// CORS — required for Supabase + frontend
 app.use(
   cors({
     origin: env.frontendUrl,
     credentials: true,
-  }),
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
 );
 
-// Rate limiting
+/* ───────────────────────────────
+   Rate limiting (safe for Render / Supabase)
+─────────────────────────────── */
+
+app.set("trust proxy", 1); // REQUIRED for Render / Vercel / Supabase edge
+
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later.",
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use("/api/", limiter);
 
-// Body parsing middleware
+app.use("/api", limiter);
+
+/* ───────────────────────────────
+   Body parsing
+─────────────────────────────── */
+
 app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
-// Logging
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-}
+/* ───────────────────────────────
+   Logging
+─────────────────────────────── */
 
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+app.use(
+  morgan(process.env.NODE_ENV === "development" ? "dev" : "combined", {
+    skip: (req) => req.url === "/health",
+  })
+);
+
+/* ───────────────────────────────
+   Health check (Render + Supabase)
+─────────────────────────────── */
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    env: process.env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+  });
 });
 
-// API routes
+/* ───────────────────────────────
+   API Routes
+─────────────────────────────── */
+
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/ministries", ministryRoutes);
@@ -69,15 +104,21 @@ app.use("/api/media", mediaRoutes);
 app.use("/api/members", memberRoutes);
 app.use("/api/blogs", blogRoutes);
 
-// 404 handler
-app.use((req, res) => {
+/* ───────────────────────────────
+   404 Handler
+─────────────────────────────── */
+
+app.use((_req, res) => {
   res.status(404).json({
     success: false,
     message: "Route not found",
   });
 });
 
-// Error handling middleware (must be last)
+/* ───────────────────────────────
+   Error handler (last)
+─────────────────────────────── */
+
 app.use(errorHandler);
 
 export default app;
